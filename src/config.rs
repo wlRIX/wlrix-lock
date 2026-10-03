@@ -252,6 +252,45 @@ mod tests {
     }
 
     #[test]
+    fn the_settings_daemons_schema_is_one_this_program_accepts() {
+        // `wlrix-settings-daemon --dump-schema`, the lock.toml section, pasted verbatim. The
+        // daemon's table is a hand-kept copy of the types above; with `deny_unknown_fields`, a key
+        // it writes that this program does not know would cost the user the whole file. When
+        // either side changes, regenerate this from the daemon and keep it passing.
+        let dump = r##"
+# Blur behind the lock screen
+blur = 0
+
+[appearance]
+# Color scheme
+# palette =    # no default; unset by default
+
+[clock]
+# Clock format
+time_format = "%H:%M"
+# Date format
+# date_format =    # no default; unset by default
+
+[background]
+# Lock screen wallpaper
+# image =    # no default; unset by default
+# How the lock screen wallpaper is fitted
+mode = "fill"
+# Lock screen color
+color = "#555555"
+"##;
+        let config: Config = toml::from_str(dump).expect("the daemon's schema must parse");
+        // And its declared defaults are this program's defaults.
+        let defaults = Config::default();
+        assert_eq!(config.blur, defaults.blur);
+        assert_eq!(config.time_format(), defaults.time_format());
+        assert_eq!(
+            config.background.resolve(None),
+            defaults.background.resolve(None)
+        );
+    }
+
+    #[test]
     fn the_installed_defaults_match_wlrix_bgs() {
         // The two templates must describe the same wallpaper, or a fresh machine locks to a
         // different picture than its desktop shows. wlrix-bg's template is not in this repo, so

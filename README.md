@@ -102,6 +102,20 @@ and anything not covered gets the weekday and the locale's own short date. `date
 GNOME's settings write. PNG or JPEG. Without one, a drawn head-and-shoulders stands in. The name is the account's GECOS
 name, or the login name when there is none.
 
+### Through the settings daemon
+
+Every key above except `[[background.output]]` is described and written by `wlrix-settings-daemon` under the `lock`
+namespace (`lock.blur`, `lock.clock.time_format`, `lock.background.mode`, ...), validated through
+`wlrix-lock --check-config` before it is committed. `lock.appearance.palette` is also a member of the
+`appearance.palette` group, so changing the desktop's color scheme changes the lock screen's with it.
+
+```bash
+busctl --user call com.wlrix.Settings /com/wlrix/Settings com.wlrix.Settings1 \
+    Set sv lock.blur x 8
+```
+
+Nothing is signaled: the change is read the next time the screen locks, and the daemon reports it as `not-running`.
+
 ## PAM
 
 The service is `wlrix-lock`, installed to `/etc/pam.d/wlrix-lock` from `setup/wlrix-lock.pam.$PAM_FLAVOR` (`arch`, the
