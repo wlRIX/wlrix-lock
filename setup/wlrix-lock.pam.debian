@@ -1,0 +1,11 @@
+#%PAM-1.0
+#
+# Unlocking the screen, on a Debian-family system. wlrix-lock runs this stack as the logged-in
+# user, under the service name `wlrix-lock`, to check the password of the account whose session
+# it locked -- nobody else's.
+#
+# Only auth and account: a locker re-proves who is at the keyboard, it does not open a session.
+# pam_unix checks the password through its setuid helper `unix_chkpwd`.
+
+@include common-auth
+@include common-account

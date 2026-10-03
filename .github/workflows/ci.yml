@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system dependencies
+        # smithay-client-toolkit's keyboard support links the system xkbcommon, so its build
+        # script needs xkbcommon.pc (from libxkbcommon-dev) via pkg-config. The locker reads the
+        # password from the keyboard, so unlike wlrix-bg it actually uses it. libpam0g-dev is
+        # the PAM library `src/pam.rs` links against, and fontconfig plus a font are what the
+        # text tests shape with.
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            pkg-config \
+            libxkbcommon-dev \
+            libpam0g-dev \
+            fonts-dejavu-core
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Format
+        run: cargo fmt --all --check
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Build
+        run: cargo build --verbose
+      # The config parser, the clock formats, the passwd parsing, the avatar mask, the blur and
+      # the secret buffer. None of them needs a compositor or a PAM stack.
+      - name: Test
+        run: cargo test --verbose

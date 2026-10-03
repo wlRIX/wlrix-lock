@@ -1,0 +1,33 @@
+# The wlRIX lock screen.
+#
+# This is the system default, installed to /etc/wlrix/lock.toml. Your own
+# ~/.config/wlrix/lock.toml replaces it **outright** -- wlRIX takes the first config file it
+# finds and does not merge -- so copy this file rather than starting an empty one.
+#
+#   blur = 0                       # blur radius over the wallpaper, in pixels; 0 is none
+#
+#   [appearance]
+#   palette = "classic"            # classic | classic-g10 | classic-g24 | gotham
+#
+#   [clock]
+#   time_format = "%H:%M"          # strftime, in your LC_TIME
+#   date_format = ""               # empty: the locale's long date
+#
+# [background] takes exactly the keys background.toml does, with the same defaults, and
+# per-monitor overrides go in [[background.output]] sections. `wlrix-lock --help` and the
+# README have the rest.
+#
+# A broken file does not stop the screen locking: it is reported, and the session locks with
+# the built-in defaults.
+
+blur = 0
+
+# The same picture the desktop background installs by default: the IRIX scatter, a two-color
+# dither that tiles seamlessly -- hence `tile` rather than the built-in default of `fill`.
+#
+# Installed by wlrix-assets. If that is not installed, this path does not exist, and the lock
+# screen says so on stderr and falls back to the color below.
+[background]
+image = "@WALLPAPERDIR@/scatter.png"
+mode = "tile"
+color = "#555555"

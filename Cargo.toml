@@ -1,0 +1,50 @@
+[package]
+name = "wlrix-lock"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0-or-later"
+description = "wlRIX screen locker — ext-session-lock-v1, with the clock, your picture and a password field over the wallpaper."
+repository = "https://github.com/wlrix/wlrix-lock"
+publish = false
+
+[dependencies]
+# The Wayland client. Its `session_lock` module wraps `ext-session-lock-v1` -- the lock object,
+# one lock surface per output, and the locked/finished events -- so the protocol handling is the
+# toolkit's rather than ours. Default features, unlike `wlrix-idle` and `wlrix-bg`: the password
+# is typed, so this needs the keyboard handling and therefore xkbcommon, as the greeter does.
+smithay-client-toolkit = "0.19"
+wayland-client = "0.31"
+# The event loop. The Wayland connection, the PAM thread's replies, the caret blink and the
+# minute tick of the clock are all sources on one loop, so nothing polls.
+calloop = "0.13"
+# The config file. TOML is wlRIX's config format throughout.
+serde = { version = "1", features = ["derive"] }
+toml = "1"
+# `getpwuid_r` for who is locked, `localtime_r`/`strftime`/`setlocale` for the clock, signal
+# dispositions, and the C allocator the PAM conversation has to answer with.
+libc = "0.2"
+
+# The shared UI crate: the canvas, the Motif bevel, the fonts and the palette. Pinned by rev
+# rather than taken by path, so this repo still builds from a fresh standalone clone. `just
+# link-ui` in `wlrix-epoch` patches in a sibling checkout while working on both sides at once.
+#
+# Text only. The avatar goes through `image` below, which reads the JPEG a `~/.face` often is;
+# `wlrix-ui`'s own decoders are PNG and SVG.
+wlrix-ui = { git = "https://github.com/wlRIX/wlrix-ui", rev = "39d751da2b39a6bc45056907cb281bcc58dd5244", default-features = false, features = ["text"] }
+# The wallpaper, as a library. The lock screen takes *the same options with the same defaults*
+# as the desktop background, and the only way that stays true is for there to be one parser,
+# one fitting rule and one set of decoders: `[background]` in lock.toml is
+# `wlrix_bg::config::Config`, decoded by `wlrix_bg::decode` and painted by `wlrix_bg::render`.
+# Pinned by rev for the same reason as `wlrix-ui`.
+wlrix-bg = { git = "https://github.com/wlRIX/wlrix-bg", rev = "d858c662a252e626b38d9eeb566214f926ecbf98" }
+# The account picture. Already in the tree through `wlrix-bg` at this version, so it costs
+# nothing new; named here because the avatar is decoded directly rather than through
+# `wlrix_bg::decode`, whose log lines speak as `wlrix-bg`. PNG and JPEG are what AccountsService
+# and `~/.face` hold in practice.
+image = { version = "0.25.8", default-features = false, features = ["png", "jpeg"] }
+
+# PAM is reached through a handful of hand-written declarations in `src/pam.rs` rather than a
+# crate. The wrappers on crates.io either generate bindings with bindgen at build time, which
+# needs libclang on every machine that builds this, or own the conversation and hand the
+# password around as a `String` -- and the conversation, and where the password's bytes go, is
+# the one part of a locker worth writing with care rather than inheriting.

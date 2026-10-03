@@ -1,0 +1,11 @@
+#%PAM-1.0
+#
+# Unlocking the screen. wlrix-lock runs this stack as the logged-in user, under the service name
+# `wlrix-lock`, to check the password of the account whose session it locked -- nobody else's.
+#
+# Only auth and account: a locker re-proves who is at the keyboard, it does not open a session,
+# so there are no session lines. `system-auth` brings pam_faillock and pam_unix, which checks the
+# password through its setuid helper `unix_chkpwd`; that is what lets an unprivileged locker work.
+
+auth       include      system-auth
+account    include      system-auth
