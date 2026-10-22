@@ -374,12 +374,17 @@ impl Locker {
         if self.screens[index].background.len() != (width * height * 4) as usize {
             self.render_background(index);
         }
-        let Ok((buffer, pixels)) =
+        let Ok((buffer, slot)) =
             self.pool
                 .create_buffer(width, height, width * 4, wl_shm::Format::Xrgb8888)
         else {
             return;
         };
+        // Only the bytes asked for: the pool rounds every slot up to a multiple of 64, so at a
+        // size whose rows do not come out even -- 853x533 at a fractional scale -- the slot is a
+        // few bytes longer than the picture, and copying the wallpaper over the whole of it
+        // panicked, leaving the session locked with nothing to unlock it from.
+        let pixels = &mut slot[..(width * height * 4) as usize];
         let screen = &mut self.screens[index];
         screen.dirty = false;
         pixels.copy_from_slice(&screen.background);
