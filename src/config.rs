@@ -207,7 +207,10 @@ mod tests {
         assert_eq!(config.blur, 0, "no blur unless asked for");
         assert_eq!(config.time_format(), "%H:%M");
         assert_eq!(config.date_format(), None);
-        assert!(config.unlock.fingerprint, "a finger unlocks unless turned off");
+        assert!(
+            config.unlock.fingerprint,
+            "a finger unlocks unless turned off"
+        );
     }
 
     #[test]

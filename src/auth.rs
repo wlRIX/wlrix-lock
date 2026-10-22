@@ -238,8 +238,14 @@ mod tests {
 
     #[test]
     fn a_commented_out_fprintd_line_does_not_count() {
-        assert!(mentions_fprintd("auth sufficient pam_fprintd.so\nauth include system-auth\n"));
-        assert!(!mentions_fprintd("#auth sufficient pam_fprintd.so\nauth include system-auth\n"));
-        assert!(!mentions_fprintd("auth include system-auth # not pam_fprintd\n"));
+        assert!(mentions_fprintd(
+            "auth sufficient pam_fprintd.so\nauth include system-auth\n"
+        ));
+        assert!(!mentions_fprintd(
+            "#auth sufficient pam_fprintd.so\nauth include system-auth\n"
+        ));
+        assert!(!mentions_fprintd(
+            "auth include system-auth # not pam_fprintd\n"
+        ));
     }
 }

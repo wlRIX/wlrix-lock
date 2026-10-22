@@ -340,7 +340,8 @@ mod tests {
 
     #[test]
     fn a_password_prompt_is_answered_with_the_password() {
-        let (status, answers, notices) = run(&[(PAM_PROMPT_ECHO_OFF, "Password: ")], Some("hunter2"));
+        let (status, answers, notices) =
+            run(&[(PAM_PROMPT_ECHO_OFF, "Password: ")], Some("hunter2"));
         assert_eq!(status, PAM_SUCCESS);
         assert_eq!(answers, vec![Some("hunter2".to_string())]);
         assert!(notices.is_empty());
@@ -368,7 +369,10 @@ mod tests {
 
     #[test]
     fn an_unknown_message_style_fails_the_conversation() {
-        let (status, _, _) = run(&[(PAM_PROMPT_ECHO_OFF, "Password: "), (99, "?")], Some("pw"));
+        let (status, _, _) = run(
+            &[(PAM_PROMPT_ECHO_OFF, "Password: "), (99, "?")],
+            Some("pw"),
+        );
         assert_eq!(status, PAM_CONV_ERR);
     }
 

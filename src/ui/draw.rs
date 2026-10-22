@@ -104,8 +104,8 @@ pub fn paint(
         view.finger,
         view.caps_lock.then_some("Caps Lock is on"),
     ]
-        .into_iter()
-        .flatten()
+    .into_iter()
+    .flatten()
     {
         centered(
             canvas,
