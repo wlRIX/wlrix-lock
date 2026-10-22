@@ -12,6 +12,9 @@
 //! time_format = "%H:%M"       # strftime, in the session's LC_TIME
 //! date_format = ""            # empty: the locale's long date
 //!
+//! [unlock]
+//! fingerprint = true          # accept an enrolled finger as well as the password
+//!
 //! # Exactly the keys of background.toml, with exactly its defaults -- paste one in.
 //! [background]
 //! image = "/usr/share/wlrix/wallpapers/scatter.png"
@@ -62,6 +65,8 @@ pub struct Config {
     pub appearance: AppearanceConfig,
     #[serde(default)]
     pub clock: ClockConfig,
+    #[serde(default)]
+    pub unlock: UnlockConfig,
     /// The wallpaper, in `background.toml`'s schema. Absent is the same as an empty
     /// `background.toml`: `fill`, `#555555`, no picture.
     #[serde(default)]
@@ -91,6 +96,26 @@ pub struct ClockConfig {
     /// see [`crate::clock::long_date_format`].
     #[serde(default)]
     pub date_format: Option<String>,
+}
+
+/// What unlocks, besides the password.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UnlockConfig {
+    /// Whether an enrolled fingerprint unlocks too, through the `wlrix-lock-fingerprint` PAM
+    /// stack. On by default: with no reader, no fprintd or nothing enrolled it does nothing.
+    #[serde(default = "yes")]
+    pub fingerprint: bool,
+}
+
+impl Default for UnlockConfig {
+    fn default() -> Self {
+        Self { fingerprint: true }
+    }
+}
+
+fn yes() -> bool {
+    true
 }
 
 impl Config {
@@ -182,6 +207,17 @@ mod tests {
         assert_eq!(config.blur, 0, "no blur unless asked for");
         assert_eq!(config.time_format(), "%H:%M");
         assert_eq!(config.date_format(), None);
+        assert!(config.unlock.fingerprint, "a finger unlocks unless turned off");
+    }
+
+    #[test]
+    fn the_fingerprint_can_be_turned_off() {
+        let config: Config =
+            toml::from_str("[unlock]\nfingerprint = false\n").expect("should parse");
+        assert!(!config.unlock.fingerprint);
+        let config: Config = toml::from_str("[unlock]\n").expect("should parse");
+        assert!(config.unlock.fingerprint);
+        assert!(toml::from_str::<Config>("[unlock]\nfinger = false\n").is_err());
     }
 
     #[test]
@@ -278,6 +314,10 @@ time_format = "%H:%M"
 mode = "fill"
 # Lock screen color
 color = "#555555"
+
+[unlock]
+# Unlock with a fingerprint
+fingerprint = true
 "##;
         let config: Config = toml::from_str(dump).expect("the daemon's schema must parse");
         // And its declared defaults are this program's defaults.

@@ -62,6 +62,9 @@ palette = "classic"         # classic | classic-g10 | classic-g24 | gotham
 time_format = "%H:%M"       # strftime, in your LC_TIME
 date_format = ""            # empty: the locale's long date
 
+[unlock]
+fingerprint = true          # an enrolled finger unlocks too
+
 # Exactly background.toml's keys, with exactly its defaults.
 [background]
 image = "/usr/share/wlrix/wallpapers/scatter.png"
@@ -124,6 +127,22 @@ unprivileged; `pam_unix` checks the password through its setuid helper `unix_chk
 
 **Without that file the session cannot be unlocked** -- PAM falls back to the `other` service, which denies everything
 on most distributions. That is why `install` refuses to proceed without a stack for the chosen flavor.
+
+### Fingerprints
+
+A finger on the reader unlocks too, at the same time as the password field, as KDE's lock screen does: once the session
+is locked a second thread runs the `wlrix-lock-fingerprint` stack (`setup/wlrix-lock-fingerprint.pam.$PAM_FLAVOR`,
+installed beside the first), which is pam_fprintd and nothing else. Whichever conversation succeeds first unlocks.
+pam_fprintd's own messages ("Place your finger...", "no match") show in a line under the field.
+
+pam_fprintd gives up after its timeout or a few mismatches and loses the reader across a suspend, so a finished attempt
+is started again. One that fails at once -- no reader, nothing enrolled (User Accounts → Fingerprints), no fprintd --
+waits 10 seconds before the next, doubling up to five minutes. The stack's `-auth` line is skipped when pam_fprintd is
+not installed, leaving `pam_deny`: only the password unlocks.
+
+Not run when `system-auth` or `common-auth` already loads pam_fprintd (Debian's `pam-auth-update` does that with
+libpam-fprintd): the password stack asks for the finger itself then, and two conversations would fight over the
+reader. `[unlock] fingerprint = false` in `lock.toml` turns it off.
 
 ## Options
 

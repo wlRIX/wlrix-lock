@@ -23,6 +23,9 @@ bin-dst := bin-dir / name
 
 pam-src := 'setup' / name + '.pam.' + pam-flavor
 pam-dst := etc-dir / 'pam.d' / name
+# The fingerprint stack, run beside the password one; see the file.
+finger-pam-src := 'setup' / name + '-fingerprint.pam.' + pam-flavor
+finger-pam-dst := etc-dir / 'pam.d' / name + '-fingerprint'
 
 # The system default config: a template, because it names the installed wallpaper by absolute
 # path. The same @WALLPAPERDIR@ arrangement as wlrix-bg's background.toml.in.
@@ -45,7 +48,7 @@ lint:
 test:
   cargo test
 
-# Install the locker, its PAM stack and its system default config.
+# Install the locker, its PAM stacks and its system default config.
 #
 # Deliberately does not build: this is normally run as root, and building as root leaves a
 # target directory nobody can write to afterwards.
@@ -72,6 +75,10 @@ install:
   # can never be unlocked -- so it is not optional.
   install -Dm0644 '{{pam-src}}' '{{pam-dst}}'
   echo "installed {{pam-dst}} (PAM stack: {{pam-flavor}}; set PAM_FLAVOR= to change it)"
+  # Installed whether or not fprintd is: without pam_fprintd the stack only ever fails, and the
+  # password is what unlocks, as it always was.
+  install -Dm0644 '{{finger-pam-src}}' '{{finger-pam-dst}}'
+  echo "installed {{finger-pam-dst}}"
 
   # /etc/wlrix belongs to whoever installed the machine; an existing config is left alone.
   if [ -e '{{config-dst}}' ]; then
@@ -94,8 +101,8 @@ install:
 uninstall:
   #!/usr/bin/env bash
   set -euo pipefail
-  rm -f '{{bin-dst}}' '{{pam-dst}}'
-  echo "removed {{bin-dst}} {{pam-dst}}"
+  rm -f '{{bin-dst}}' '{{pam-dst}}' '{{finger-pam-dst}}'
+  echo "removed {{bin-dst}} {{pam-dst}} {{finger-pam-dst}}"
   if [ -e '{{config-dst}}' ]; then
     echo "left {{config-dst}} alone -- remove it by hand if you want it gone"
   fi

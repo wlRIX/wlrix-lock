@@ -1,0 +1,14 @@
+#%PAM-1.0
+#
+# Unlocking the screen with a fingerprint, on a Debian-family system. wlrix-lock runs this stack
+# beside `wlrix-lock`, on a thread of its own, so the finger and the password are both accepted
+# at once and whichever succeeds first unlocks.
+#
+# pam_fprintd alone: no password module, so this stack never asks for one. `default=die` hands
+# back pam_fprintd's own answer rather than pam_deny's -- a timeout, too many mismatches, no
+# reader -- which is what wlrix-lock decides when to try again by. The leading `-` skips the line
+# if libpam-fprintd is not installed, which leaves pam_deny: only the password unlocks.
+
+-auth      [success=done default=die]  pam_fprintd.so
+auth       required     pam_deny.so
+@include common-account

@@ -36,6 +36,8 @@ pub struct View<'a> {
     /// A check is running: the button stays in and the caret is hidden.
     pub checking: bool,
     pub message: Option<&'a str>,
+    /// What the fingerprint reader last said, while it is listening.
+    pub finger: Option<&'a str>,
     pub caps_lock: bool,
 }
 
@@ -93,10 +95,15 @@ pub fn paint(
     field(canvas, layout, palette, fonts, view);
     button(canvas, layout, palette, view.checking);
 
-    // The message under the field, and the caps-lock warning under that when both apply.
+    // The message under the field, then the fingerprint reader's line, then the caps-lock
+    // warning, each only when it applies.
     let mut baseline = layout.message_baseline;
     let line = fonts.line_height(Face::Regular, layout.message_px);
-    for text in [view.message, view.caps_lock.then_some("Caps Lock is on")]
+    for text in [
+        view.message,
+        view.finger,
+        view.caps_lock.then_some("Caps Lock is on"),
+    ]
         .into_iter()
         .flatten()
     {
@@ -329,6 +336,7 @@ mod tests {
             caret_on: false,
             checking,
             message: None,
+            finger: None,
             caps_lock: false,
         }
     }

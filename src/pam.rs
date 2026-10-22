@@ -22,6 +22,7 @@ const PAM_SUCCESS: c_int = 0;
 const PAM_BUF_ERR: c_int = 5;
 const PAM_PERM_DENIED: c_int = 6;
 const PAM_AUTH_ERR: c_int = 7;
+const PAM_AUTHINFO_UNAVAIL: c_int = 9;
 const PAM_USER_UNKNOWN: c_int = 10;
 const PAM_MAXTRIES: c_int = 11;
 const PAM_CONV_ERR: c_int = 19;
@@ -84,6 +85,9 @@ unsafe extern "C" {
 pub enum Failure {
     /// The password was wrong. Deliberately carries no detail.
     Denied,
+    /// The stack could not ask: for a fingerprint, no reader, a timeout, or a reader lost to
+    /// suspend. Carries PAM's description.
+    Unavailable(String),
     /// Anything else, with PAM's own description: an expired account, a broken stack, a missing
     /// service file. Worth showing, because the person at the keyboard cannot fix it by typing
     /// more carefully and needs to know that.
@@ -92,19 +96,23 @@ pub enum Failure {
 
 /// What the conversation callback needs: the answer, and somewhere to put PAM's notices.
 struct Conversation<'a> {
-    password: &'a Secret,
+    /// `None` for a stack that should never ask, the fingerprint one: a prompt then fails the
+    /// conversation rather than being answered with nothing.
+    password: Option<&'a Secret>,
     notice: &'a mut dyn FnMut(String),
 }
 
-/// Check `password` for `user` against the PAM service `service`.
+/// Check `password` for `user` against the PAM service `service`, or, with no password, run a
+/// stack that needs none (the fingerprint one).
 ///
 /// `notice` receives each informational or error message the stack sends while it works --
-/// `pam_faillock`'s "the account is locked" is the one that matters -- so it can be shown.
+/// `pam_faillock`'s "the account is locked", pam_fprintd's "Place your finger" -- so it can be
+/// shown.
 /// Blocks, for a second or more after a wrong password; call it from a worker thread.
 pub fn authenticate(
     service: &str,
     user: &str,
-    password: &Secret,
+    password: Option<&Secret>,
     notice: &mut dyn FnMut(String),
 ) -> Result<(), Failure> {
     let service = CString::new(service).map_err(|_| Failure::Error("bad service name".into()))?;
@@ -138,6 +146,7 @@ pub fn authenticate(
             PAM_AUTH_ERR | PAM_USER_UNKNOWN | PAM_MAXTRIES | PAM_PERM_DENIED => {
                 Err(Failure::Denied)
             }
+            PAM_AUTHINFO_UNAVAIL => Err(Failure::Unavailable(describe(handle, status))),
             other => Err(Failure::Error(describe(handle, other))),
         };
         pam_end(handle, status);
@@ -199,7 +208,10 @@ extern "C" fn converse(
         let (style, text) = unsafe { ((*message).msg_style, (*message).msg) };
         match style {
             PAM_PROMPT_ECHO_OFF | PAM_PROMPT_ECHO_ON => {
-                let Some(answer) = c_copy(conversation.password.as_bytes()) else {
+                let Some(answer) = conversation
+                    .password
+                    .and_then(|password| c_copy(password.as_bytes()))
+                else {
                     // SAFETY: as above.
                     unsafe { free_responses(responses, count) };
                     return PAM_CONV_ERR;
@@ -274,7 +286,7 @@ mod tests {
     /// Run the conversation function over `messages` the way PAM would.
     fn run(
         messages: &[(c_int, &str)],
-        password: &str,
+        password: Option<&str>,
     ) -> (c_int, Vec<Option<String>>, Vec<String>) {
         let texts: Vec<CString> = messages
             .iter()
@@ -292,11 +304,11 @@ mod tests {
             structs.iter().map(|m| m as *const PamMessage).collect();
 
         let mut secret = Secret::new();
-        secret.push_str(password);
+        secret.push_str(password.unwrap_or_default());
         let mut notices = Vec::new();
         let mut push = |text: String| notices.push(text);
         let mut conversation = Conversation {
-            password: &secret,
+            password: password.map(|_| &secret),
             notice: &mut push,
         };
         let mut resp: *mut PamResponse = std::ptr::null_mut();
@@ -328,7 +340,7 @@ mod tests {
 
     #[test]
     fn a_password_prompt_is_answered_with_the_password() {
-        let (status, answers, notices) = run(&[(PAM_PROMPT_ECHO_OFF, "Password: ")], "hunter2");
+        let (status, answers, notices) = run(&[(PAM_PROMPT_ECHO_OFF, "Password: ")], Some("hunter2"));
         assert_eq!(status, PAM_SUCCESS);
         assert_eq!(answers, vec![Some("hunter2".to_string())]);
         assert!(notices.is_empty());
@@ -344,7 +356,7 @@ mod tests {
                 ),
                 (PAM_PROMPT_ECHO_OFF, "Password: "),
             ],
-            "pw",
+            Some("pw"),
         );
         assert_eq!(status, PAM_SUCCESS);
         assert_eq!(answers, vec![None, Some("pw".to_string())]);
@@ -356,7 +368,23 @@ mod tests {
 
     #[test]
     fn an_unknown_message_style_fails_the_conversation() {
-        let (status, _, _) = run(&[(PAM_PROMPT_ECHO_OFF, "Password: "), (99, "?")], "pw");
+        let (status, _, _) = run(&[(PAM_PROMPT_ECHO_OFF, "Password: "), (99, "?")], Some("pw"));
+        assert_eq!(status, PAM_CONV_ERR);
+    }
+
+    #[test]
+    fn a_stack_run_without_a_password_is_never_answered_with_one() {
+        // The fingerprint stack: its messages pass, and a prompt it should not make fails.
+        let (status, _, notices) = run(
+            &[(PAM_TEXT_INFO, "Place your finger on the fingerprint reader")],
+            None,
+        );
+        assert_eq!(status, PAM_SUCCESS);
+        assert_eq!(
+            notices,
+            vec!["Place your finger on the fingerprint reader".to_string()]
+        );
+        let (status, _, _) = run(&[(PAM_PROMPT_ECHO_OFF, "Password: ")], None);
         assert_eq!(status, PAM_CONV_ERR);
     }
 }

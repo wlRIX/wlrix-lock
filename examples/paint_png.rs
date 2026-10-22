@@ -7,7 +7,7 @@
 //! next to the reference picture.
 //!
 //!     cargo run --example paint_png -- out.png [width height [scale]] [--config lock.toml]
-//!         [--typed N] [--message TEXT] [--caps]
+//!         [--typed N] [--message TEXT] [--finger TEXT] [--caps]
 //!
 //! A development aid, not part of the locker.
 
@@ -28,12 +28,14 @@ fn main() -> Result<(), String> {
     let mut config_path = None;
     let mut typed = 0;
     let mut message = None;
+    let mut finger = None;
     let mut caps_lock = false;
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--config" => config_path = args.next().map(PathBuf::from),
             "--typed" => typed = args.next().and_then(|n| n.parse().ok()).unwrap_or(0),
             "--message" => message = args.next(),
+            "--finger" => finger = args.next(),
             "--caps" => caps_lock = true,
             _ => positional.push(arg),
         }
@@ -84,6 +86,7 @@ fn main() -> Result<(), String> {
         caret_on: true,
         checking: false,
         message: message.as_deref(),
+        finger: finger.as_deref(),
         caps_lock,
     };
     let layout = Layout::compute(width, height, scale);

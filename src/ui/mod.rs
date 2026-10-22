@@ -154,6 +154,8 @@ pub struct Locker {
     phase: Phase,
     auth: auth::Handle,
     message: Option<String>,
+    /// The fingerprint reader's line; see [`auth`].
+    finger: Option<String>,
     caps_lock: bool,
     caret_on: bool,
     time: String,
@@ -227,6 +229,7 @@ pub fn run(config: Config) -> Result<(), String> {
         phase: Phase::Idle,
         auth,
         message: None,
+        finger: None,
         caps_lock: false,
         caret_on: true,
         exit: None,
@@ -400,6 +403,7 @@ impl Locker {
             caret_on: self.caret_on,
             checking: self.phase == Phase::Checking,
             message: self.message.as_deref(),
+            finger: self.finger.as_deref(),
             caps_lock: self.caps_lock,
         };
         let mut canvas = Canvas::new(pixels, width, height);
@@ -448,7 +452,8 @@ impl Locker {
                 self.phase = Phase::Idle;
                 self.message = Some("Unlocking failed".to_string());
             }
-            Reply::Failed(Failure::Error(why)) => {
+            Reply::Finger(text) => self.finger = text,
+            Reply::Failed(Failure::Error(why) | Failure::Unavailable(why)) => {
                 eprintln!("wlrix-lock: authentication error: {why}");
                 self.phase = Phase::Idle;
                 self.message = Some(why);
@@ -486,6 +491,11 @@ impl Locker {
 impl SessionLockHandler for Locker {
     fn locked(&mut self, _c: &Connection, _qh: &QueueHandle<Self>, _lock: SessionLock) {
         self.status = LockStatus::Locked;
+        // Only now: a finger that matched before the lock was granted would unlock a session
+        // that was never locked, which the protocol forbids.
+        if self.config.unlock.fingerprint {
+            self.auth.start_fingerprint();
+        }
         eprintln!("wlrix-lock: session locked");
     }
 

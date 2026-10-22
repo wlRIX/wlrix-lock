@@ -13,6 +13,9 @@
 #   time_format = "%H:%M"          # strftime, in your LC_TIME
 #   date_format = ""               # empty: the locale's long date
 #
+#   [unlock]
+#   fingerprint = true             # an enrolled finger unlocks too (User Accounts → Fingerprints)
+#
 # [background] takes exactly the keys background.toml does, with the same defaults, and
 # per-monitor overrides go in [[background.output]] sections. `wlrix-lock --help` and the
 # README have the rest.

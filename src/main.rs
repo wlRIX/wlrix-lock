@@ -28,6 +28,8 @@ fn usage() -> String {
            [clock]\n  \
            time_format = \"%H:%M\"\n  \
            date_format = \"\"             # empty: the locale's long date\n\n  \
+           [unlock]\n  \
+           fingerprint = true           # an enrolled finger unlocks too\n\n  \
            [background]                 # exactly background.toml's keys and defaults\n  \
            image = \"/path/to/picture.png\"\n  \
            mode  = \"fill\"               # tile, center, fit, fill, stretch, solid\n  \
