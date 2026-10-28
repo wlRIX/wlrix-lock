@@ -65,6 +65,7 @@ use crate::auth::{self, Reply};
 use crate::avatar::Avatar;
 use crate::clock;
 use crate::config::Config;
+use crate::i18n::tr;
 use crate::pam::Failure;
 use crate::secret::Secret;
 use crate::user::User;
@@ -75,6 +76,11 @@ const CARET_BLINK: Duration = Duration::from_millis(530);
 
 /// The Linux button code for the left mouse button.
 const BTN_LEFT: u32 = 0x110;
+
+/// What the screen says when there is no way left to check a password.
+fn unavailable() -> &'static str {
+    tr("Authentication is unavailable", "認証を利用できません")
+}
 
 /// One output's lock surface.
 struct Screen {
@@ -261,7 +267,7 @@ pub fn run(config: Config) -> Result<(), String> {
             // a PAM module. Say so where it can be read; there is no way to unlock now, and
             // pretending otherwise would leave someone typing into a dead field.
             ChannelEvent::Closed => {
-                locker.message = Some("Authentication is unavailable".to_string());
+                locker.message = Some(unavailable().to_string());
                 locker.mark_dirty();
             }
         })
@@ -435,7 +441,7 @@ impl Locker {
             self.phase = Phase::Checking;
             self.message = None;
         } else {
-            self.message = Some("Authentication is unavailable".to_string());
+            self.message = Some(unavailable().to_string());
         }
         self.mark_dirty();
     }
@@ -450,7 +456,8 @@ impl Locker {
             }
             Reply::Failed(Failure::Denied) => {
                 self.phase = Phase::Idle;
-                self.message = Some("Unlocking failed".to_string());
+                self.message =
+                    Some(tr("Unlocking failed", "ロックを解除できませんでした").to_string());
             }
             Reply::Finger(text) => self.finger = text,
             Reply::Failed(Failure::Error(why) | Failure::Unavailable(why)) => {

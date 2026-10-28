@@ -11,6 +11,7 @@ pub mod avatar;
 pub mod blur;
 pub mod clock;
 pub mod config;
+pub mod i18n;
 pub mod pam;
 pub mod secret;
 pub mod ui;

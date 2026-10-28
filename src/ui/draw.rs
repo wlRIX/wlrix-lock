@@ -14,6 +14,7 @@ use wlrix_ui::palette::Palette;
 use wlrix_ui::text::{Face, Fonts};
 
 use crate::avatar::Avatar;
+use crate::i18n::tr;
 use crate::ui::layout::Layout;
 
 /// The text drawn straight on the wallpaper.
@@ -102,7 +103,8 @@ pub fn paint(
     for text in [
         view.message,
         view.finger,
-        view.caps_lock.then_some("Caps Lock is on"),
+        view.caps_lock
+            .then_some(tr("Caps Lock is on", "Caps Lock がオンになっています")),
     ]
     .into_iter()
     .flatten()
@@ -156,7 +158,7 @@ fn field(canvas: &mut Canvas, layout: &Layout, palette: &Palette, fonts: &mut Fo
             layout.field_px,
             left,
             baseline,
-            "Password",
+            tr("Password", "パスワード"),
             palette.disabled_foreground,
             0,
         );
